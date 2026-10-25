@@ -51,10 +51,27 @@ def search_google_books(query: str, max_results: int = DEFAULT_RESULTS) -> pd.Da
     if api_key:
         params["key"] = api_key
 
-    response = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=20)
+       response = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=20)
+
+    if response.status_code != 200:
+        try:
+            error = response.json().get("error", {})
+            details = error.get("errors", [])
+            reason = details[0].get("reason", "unknown") if details else "unknown"
+            message = error.get("message", "No detailed error message")
+
+            raise RuntimeError(
+                f"Google Books API: HTTP {response.status_code}; "
+                f"reason={reason}; message={message}"
+            )
+        except ValueError:
+            raise RuntimeError(
+                f"Google Books API returned HTTP {response.status_code}; "
+                "could not parse its error response."
+            )
+
     response.raise_for_status()
     payload = response.json()
-
     rows = []
     for item in payload.get("items", []):
         info = item.get("volumeInfo", {}) or {}
