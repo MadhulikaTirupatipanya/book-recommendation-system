@@ -45,6 +45,7 @@ def search_google_books(query: str, max_results: int = DEFAULT_RESULTS) -> pd.Da
         "maxResults": max(1, min(int(max_results), 40)),
         "printType": "books",
         "orderBy": "relevance",
+        "country": "IN",
     }
 
     api_key = get_api_key()
