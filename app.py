@@ -51,26 +51,25 @@ def search_google_books(query: str, max_results: int = DEFAULT_RESULTS) -> pd.Da
     if api_key:
         params["key"] = api_key
 
-       response = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=20)
+    response = requests.get(GOOGLE_BOOKS_URL, params=params, timeout=20)
 
     if response.status_code != 200:
         try:
-            error = response.json().get("error", {})
+            error_payload = response.json()
+            error = error_payload.get("error", {})
             details = error.get("errors", [])
             reason = details[0].get("reason", "unknown") if details else "unknown"
             message = error.get("message", "No detailed error message")
+        except (ValueError, AttributeError, TypeError):
+            reason = "unknown"
+            message = "Could not parse Google's error response."
 
-            raise RuntimeError(
-                f"Google Books API: HTTP {response.status_code}; "
-                f"reason={reason}; message={message}"
-            )
-        except ValueError:
-            raise RuntimeError(
-                f"Google Books API returned HTTP {response.status_code}; "
-                "could not parse its error response."
-            )
+        # Do not include response.url here because it may expose the API key.
+        raise RuntimeError(
+            f"Google Books API: HTTP {response.status_code}; "
+            f"reason={reason}; message={message}"
+        )
 
-    response.raise_for_status()
     payload = response.json()
     rows = []
     for item in payload.get("items", []):
@@ -273,6 +272,8 @@ if st.button("Search Books", type="primary"):
                 "Could not connect to Google Books. Check your internet "
                 f"connection and try again. Details: {exc}"
             )
+        except RuntimeError as exc:
+            st.error(str(exc))
         except (ValueError, KeyError) as exc:
             st.error(f"Could not read the Google Books response: {exc}")
 
